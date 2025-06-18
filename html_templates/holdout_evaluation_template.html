@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+
+{% block title %}Holdout Evaluation: XGBoost - {{ model_name }}{% endblock %}
+
+{% block header_title %}Holdout Evaluation: XGBoost - {{ model_name }}{% endblock %}
+
+{% block content %}
+<!-- Model Status -->
+<div class="status-badge {{ 'status-pass' if accuracy > 0.8 else ('status-warning' if accuracy > 0.6 else 'status-fail') }}">
+    Model Performance: {{ 'Excellent' if accuracy > 0.8 else ('Good' if accuracy > 0.6 else 'Needs Improvement') }}
+</div>
+
+<!-- Performance Summary -->
+<section id="summary">
+    <h2 class="section-header">Performance Summary</h2>
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-value">{{ "%.1f"|format(accuracy * 100) }}%</div>
+            <div class="stat-label">Holdout Accuracy</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ "%.1f"|format(balanced_accuracy * 100) }}%</div>
+            <div class="stat-label">Holdout Balanced Accuracy</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ "%.1f"|format(f1_score * 100) }}%</div>
+            <div class="stat-label">Holdout F1 Score</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ "%.3f"|format(max_auc_score) }}</div>
+            <div class="stat-label">Best AUC Score</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ max_auc_class }}</div>
+            <div class="stat-label">Best Performing Class</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ "%.3f"|format(min_auc_score) }}</div>
+            <div class="stat-label">Lowest AUC Score</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ min_auc_class }}</div>
+            <div class="stat-label">Most Challenging Class</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ n_classes }}</div>
+            <div class="stat-label">Number of Classes</div>
+        </div>
+    </div>
+
+    <!-- Performance Interpretation -->
+    {% if accuracy > 0.9 %}
+    <div class="alert alert-success">
+        <h4>Excellent Performance!</h4>
+        <p>The model shows outstanding accuracy ({{ "%.1f"|format(accuracy * 100) }}%) on the holdout dataset, indicating strong generalization capability.</p>
+    </div>
+    {% elif accuracy > 0.8 %}
+    <div class="alert alert-info">
+        <h4>Good Performance</h4>
+        <p>The model demonstrates solid performance with {{ "%.1f"|format(accuracy * 100) }}% accuracy on unseen data.</p>
+    </div>
+    {% elif accuracy > 0.6 %}
+    <div class="alert alert-warning">
+        <h4>Moderate Performance</h4>
+        <p>The model shows moderate performance ({{ "%.1f"|format(accuracy * 100) }}%). Consider feature engineering or hyperparameter tuning.</p>
+    </div>
+    {% else %}
+    <div class="alert alert-danger">
+        <h4>Poor Performance</h4>
+        <p>The model performance is below expectations ({{ "%.1f"|format(accuracy * 100) }}%). Significant improvements needed.</p>
+    </div>
+    {% endif %}
+</section>
+
+<!-- Tabbed Content -->
+<div class="tabs">
+    <div class="tab-buttons">
+        <button class="tab-button active" onclick="showTab('distribution-tab')">Class Distribution</button>
+        <button class="tab-button" onclick="showTab('confusion-tab')">Confusion Matrix</button>
+        <button class="tab-button" onclick="showTab('roc-tab')">ROC Analysis</button>
+    </div>
+
+    <!-- Class Distribution Tab -->
+    <div id="distribution-tab" class="tab-content active">
+        <section id="class-distribution">
+            <h2 class="section-header">Class Distribution</h2>
+            <div class="plot-container">
+                <div class="plot-title">Distribution of Classes in Holdout Dataset</div>
+                <img src="data:image/png;base64,{{ class_distribution_plot }}" alt="Class Distribution">
+            </div>
+            <p>This chart shows the distribution of samples across different classes in the holdout dataset. 
+               Balanced datasets typically yield more reliable performance metrics, while imbalanced datasets 
+               may require additional evaluation considerations.</p>
+            
+            {% if class_imbalance_detected %}
+            <div class="alert alert-warning">
+                <h4>Class Imbalance Detected</h4>
+                <p>The dataset shows significant class imbalance. Consider using stratified sampling or 
+                   class-weighted metrics for more robust evaluation.</p>
+            </div>
+            {% endif %}
+        </section>
+    </div>
+
+    <!-- Confusion Matrix Tab -->
+    <div id="confusion-tab" class="tab-content">
+        <section id="confusion-matrix">
+            <h2 class="section-header">Confusion Matrix Analysis</h2>
+            <div class="plot-container">
+                <div class="plot-title">Confusion Matrix - Predicted vs Actual Classifications</div>
+                <img src="data:image/png;base64,{{ confusion_matrix_plot }}" alt="Confusion Matrix">
+            </div>
+            <p>The confusion matrix provides detailed insight into classification performance. 
+               Diagonal elements represent correct predictions, while off-diagonal elements show misclassifications. 
+               This helps identify which classes are most often confused with each other.</p>
+            
+            <div class="alert alert-info">
+                <h4>How to Read the Matrix:</h4>
+                <ul>
+                    <li><strong>Rows:</strong> Actual (true) class labels</li>
+                    <li><strong>Columns:</strong> Predicted class labels</li>
+                    <li><strong>Diagonal:</strong> Correct predictions</li>
+                    <li><strong>Off-diagonal:</strong> Misclassifications</li>
+                </ul>
+            </div>
+        </section>
+    </div>
+
+        <!-- ROC Analysis Tab -->
+    <div id="roc-tab" class="tab-content">
+        <section id="roc-analysis">
+            <h2 class="section-header">ROC Curve Analysis</h2>
+            <div class="plot-container">
+                <div class="plot-title">Receiver Operating Characteristic (ROC) Curves by Class</div>
+                <img src="data:image/png;base64,{{ roc_curves_plot }}" alt="ROC Curves">
+            </div>
+            <p>ROC curves show the trade-off between sensitivity (True Positive Rate) and specificity (False Positive Rate) 
+               for each class. The Area Under the Curve (AUC) provides a single metric for classification performance, 
+               where 1.0 represents perfect classification and 0.5 represents random guessing.</p>
+            
+            <div class="alert alert-info">
+                <h4>AUC Score Interpretation:</h4>
+                <ul>
+                    <li><strong>0.9 - 1.0:</strong> Excellent discrimination</li>
+                    <li><strong>0.8 - 0.9:</strong> Good discrimination</li>
+                    <li><strong>0.7 - 0.8:</strong> Fair discrimination</li>
+                    <li><strong>0.6 - 0.7:</strong> Poor discrimination</li>
+                    <li><strong>0.5 - 0.6:</strong> Very poor discrimination</li>
+                </ul>
+            </div>
+
+            <!-- AUC Rankings Table -->
+            <h3 class="section-header" style="margin-top: 40px;">Class Performance Rankings</h3>
+            <div style="overflow-x: auto;">
+                {{ auc_rankings_table|safe }}
+            </div>
+        </section>
+    </div>
+</div>
+{% endblock %}

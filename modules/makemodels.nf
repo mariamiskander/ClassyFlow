@@ -92,7 +92,7 @@ process holdOutXgbEvaluation{
     
 	publishDir(
         path: "${params.output_dir}/model_reports",
-        pattern: "*.pdf",
+        pattern: "*.html",
         mode: "copy"
     )
 	
@@ -103,7 +103,7 @@ process holdOutXgbEvaluation{
 	
 	output:
 	path("holdout_*.csv"), emit: eval
-	path("Holdout_on_*.pdf")
+	path("Holdout_on_*.html")
 	
 	script:
 	template 'get_holdout_evaluation.py'
